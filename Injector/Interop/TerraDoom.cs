@@ -8,7 +8,6 @@ using ManagedDoom.UserInput;
 using ManagedDoom.Video;
 
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 using DoomContent = ManagedDoom.GameContent;
@@ -17,13 +16,12 @@ namespace Terraria.FirstApril {
     internal partial class TerraDoom : IMusic, IVideo, IUserInput {
         DoomContent content;
         Exception   exception;
-        Texture2D   screen;
         Renderer    renderer;
         Config      config;
         Doom        doom;
         Main        main;
 
-        Color[] textureData, result;
+        Color[] textureData;
 
         KeyboardState prevState;
 
@@ -39,29 +37,38 @@ namespace Terraria.FirstApril {
         public TerraDoom() {
             Console.WriteLine("Инициализация...");
 
-            // TODO: Add your initialization logic here
-            var args = new CommandLineArgs(Environment.GetCommandLineArgs());
+            try {
+                var args = new CommandLineArgs(Environment.GetCommandLineArgs());
 
-            main    = Main.instance;
-            config  = new Config(ConfigUtilities.GetConfigPath());
-            content = new DoomContent(args);
+                main    = Main.instance;
+                config  = new Config(ConfigUtilities.GetConfigPath());
+                content = new DoomContent(args);
 
-            config.video_screenwidth  = 320; // config.video_screenwidth.Clamp(320, 3200);
-            config.video_screenheight = 240; // config.video_screenheight.Clamp(200, 2000);
+                config.video_screenwidth  = 320;
+                config.video_screenheight = 240;
+                
+                renderer    = new Renderer(config, content);
+                textureData = new Color[renderer.Width * renderer.Height];
+                doom        = new Doom(args, config, content, this, null, this, this);
 
-            renderer = new Renderer(config, content);
+                fpsScale   = args.timedemo.Present ? 1 : config.video_fpsscale;
+                frameCount = -1;
 
-            textureData = new Color[renderer.Width * renderer.Height];
-            result      = new Color[textureData.Length];
-            screen      = new Texture2D(main.GraphicsDevice, renderer.Width, renderer.Height);
-            doom        = new Doom(args, config, content, this, null, this, this);
+                tripWireMethod = typeof(Wiring).GetMethod("TripWire", BindingFlags.NonPublic | BindingFlags.Static);
 
-            fpsScale   = args.timedemo.Present ? 1 : config.video_fpsscale;
-            frameCount = -1;
+                var verMsg = $" ({string.Join(", ", content.Wad.Names)})";
+                Main.versionNumber  += verMsg;
+                Main.versionNumber2 += verMsg;
+                
+                Console.WriteLine("TerraDOOM загружен успешно!");
+            }
+            catch (Exception e) {
+                var verMsg = $"ОШИБКА: проверьте наличие WAD файла! ({e.Message})";
+                Main.versionNumber  = verMsg;
+                Main.versionNumber2 = verMsg;
+                Halt(e);
+            }
 
-            tripWireMethod = typeof(Wiring).GetMethod("TripWire", BindingFlags.NonPublic | BindingFlags.Static);
-
-            Console.WriteLine("TerraDOOM загружен успешно!");
         }
 
         void Halt(Exception e) {
@@ -69,9 +76,7 @@ namespace Terraria.FirstApril {
             Console.WriteLine("TerraDOOM был отключен из-за исключения");
             exception = e;
         }
-        void TripWire(int x, int y, int w, int h) {
-            tripWireMethod.Invoke(null, new object[] { x, y, w, h });
-        }
+        void TripWire(int x, int y, int w, int h) => tripWireMethod.Invoke(null, new object[] { x, y, w, h });
         public void Handle() {
             if (string.IsNullOrEmpty(Main.worldName) ||
                 exception                 != null    ||
@@ -138,7 +143,7 @@ namespace Terraria.FirstApril {
             }
             else if (music == Bgm.NONE) {   // Сброс
             }
-            else if (music == Bgm.INTER) {  // Eerie Oth.
+            else if (music == Bgm.INTER) {  // Eerie (Otherworld)
                 TripWire(2082, 222, 1, 1);
             }
             else if ((int)music % 5 == 0) { // Boss 2
@@ -150,10 +155,10 @@ namespace Terraria.FirstApril {
             else if ((int)music % 5 == 2) { // Hell
                 TripWire(2088, 222, 1, 1);
             }
-            else if ((int)music % 5 == 3) { // ?
+            else if ((int)music % 5 == 3) { // Boss 1 (Otherworld)
                 TripWire(2076, 222, 1, 1);
             }
-            else if ((int)music % 5 == 4) { // ?
+            else if ((int)music % 5 == 4) { // Boss 2 (Otherworld)
                 TripWire(2078, 222, 1, 1);
             }
 
@@ -191,7 +196,7 @@ namespace Terraria.FirstApril {
             for (int i = 0; i < 7; i++) {
                 var weapon = Main.tile[2095 + i, 181].frameY;
                 if (weapon != prevWeapons[i]) input.Add(DoomKey.Num1 + i);
-                prevWeapons[0] = weapon;
+                prevWeapons[i] = weapon;
             }
 
             var newKeys = new HashSet<DoomKey>(input);

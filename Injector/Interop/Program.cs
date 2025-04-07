@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-using System.Threading.Tasks;
 
 namespace Terraria.FirstApril {
     internal class Program {
@@ -14,39 +13,42 @@ namespace Terraria.FirstApril {
                 return;
             }
 
-            Injector.Inject();
+            Injector.Inject(args);
         }
     }
 
     internal class Injector {
-        public static void Inject() {
+        public static void Inject(string[] args) {
             var terraria = typeof(Terraria.Program).Assembly;
 
             // Загружаем библиотеки, запакованные в EXE Teraria. Иначе будет исключение
-            // Код спионерен из нее же
             AppDomain.CurrentDomain.AssemblyResolve += delegate (object sender, ResolveEventArgs sargs) {
                 string resourceName = new AssemblyName(sargs.Name).Name + ".dll";
                 string text = Array.Find(terraria.GetManifestResourceNames(), (string element) => element.EndsWith(resourceName));
                 if (text == null) return null;
-
+            
                 Assembly assembly;
                 using (Stream manifestResourceStream = terraria.GetManifestResourceStream(text)) {
                     byte[] array = new byte[manifestResourceStream.Length];
                     manifestResourceStream.Read(array, 0, array.Length);
                     assembly = Assembly.Load(array);
                 }
-
+            
                 Console.WriteLine("Сборка загружена: " + assembly.FullName);
                 return assembly;
             };
 
+            // Последующие патч(и) нарушают порядок вызова статических конструкторов, поэтому инициализируем критично важное извне
+            // Тут по-любому есть другие подводные камни, но мне лень. Заодно меняем папку сохранений
+            Terraria.Program.SavePath = "./TerraDOOM Saves/";
+            
             TerraDoom doom = null;
             Main.OnPreDraw += _ => {
                 if (doom == null) doom = new TerraDoom();
                 doom.Handle();
             };
 
-            Task.Run(() => terraria.EntryPoint.Invoke(null, new object[] { Environment.GetCommandLineArgs() })).Wait();
+            terraria.EntryPoint.Invoke(null, new object[] { args });
         }
     }
 }

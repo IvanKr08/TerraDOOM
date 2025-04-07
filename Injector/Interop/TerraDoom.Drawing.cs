@@ -128,8 +128,8 @@ namespace Terraria.FirstApril {
                 }
 
                 // Game field
-                int w = screen.Width;
-                int h = screen.Height;
+                int w = renderer.Width;
+                int h = renderer.Height;
                 for (float y = 0; y < h; y += w / 101f) {
                     for (float x = 0; x < w; x += h / 60) {
                         var texData = textureData[(int)x * h + (int)y];
@@ -207,8 +207,8 @@ namespace Terraria.FirstApril {
                     renderer.Render(doom, (byte*)p, frameFrac);
                 }
 
-                int w = screen.Width;
-                int h = screen.Height;
+                int w = renderer.Width;
+                int h = renderer.Height;
                 for (float y = 0; y < h; y += w / 101f) {
                     for (float x = 0; x < w; x += h / 60) {
                         var texData = textureData[(int)x * h + (int)y];
